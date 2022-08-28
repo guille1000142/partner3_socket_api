@@ -50,27 +50,6 @@ app.get("/", (req, res) => {
   res.send("<h1>Partner3</h1>");
 });
 
-// scriptSources = [
-//   "'self'",
-//   "'unsafe-inline'",
-//   "'unsafe-eval'",
-//   "https://y5wxbjuivg2iwmogoe675xfm0bn2ta.ext-twitch.tv",
-// ];
-// styleSources = ["'self'", "'unsafe-inline'", "ajax.googleapis.com"];
-// connectSources = ["'self'", "https://chilly-dragons-suffer.loca.lt"];
-// app.use(
-//   helmet.contentSecurityPolicy({
-//     defaultSrc: ["'self'"],
-//     scriptSrc: scriptSources,
-//     styleSrc: styleSources,
-//     connectSrc: connectSources,
-//     reportUri: "/report-violation",
-//     reportOnly: false,
-//     setAllHeaders: false,
-//     safari5: false,
-//   })
-// );
-
 app.use(cors());
 
 const server = http.createServer(app);
@@ -85,21 +64,21 @@ const io = new Server(server, {
   allowEIO3: true,
 });
 
-// io.use(function (socket, next) {
-//   if (socket.handshake.query && socket.handshake.query.token) {
-//     jwt.verify(
-//       socket.handshake.query.token,
-//       process.env.PRIVATE_KEY,
-//       function (err, decoded) {
-//         if (err) return next(new Error("Authentication error"));
-//         socket.decoded = decoded;
-//         next();
-//       }
-//     );
-//   } else {
-//     next(new Error("Authentication error"));
-//   }
-// });
+ io.use(function (socket, next) {
+   if (socket.handshake.query && socket.handshake.query.token) {
+     jwt.verify(
+       socket.handshake.query.token,
+       process.env.PRIVATE_KEY,
+       function (err, decoded) {
+         if (err) return next(new Error("Authentication error"));
+         socket.decoded = decoded;
+         next();
+       }
+     );
+   } else {
+     next(new Error("Authentication error"));
+   }
+ });
 
 io.on("connection", (socket) => {
   socket.emit("receive_bot", botData);
