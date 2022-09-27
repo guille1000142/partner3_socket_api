@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const app = express();
+const axios = require("axios");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
@@ -10,7 +11,7 @@ const { db } = require("./firebase/firebase");
 const chat = db.collection("bot");
 const users = db.collection("users");
 const donations = db.collection("donations");
-const predictions = db.collection("predictions");
+// const predictions = db.collection("predictions");
 const promotions = db.collection("promotions");
 
 var botData = [];
@@ -49,15 +50,15 @@ const donationsListener = donations.onSnapshot(
   }
 );
 
-const predictionsListener = predictions.onSnapshot(
-  (docsSnapshot) => {
-    const docs = docsSnapshot.docs.map((doc) => doc.data());
-    predictionsData = docs;
-  },
-  (err) => {
-    console.log(`Encountered error: ${err}`);
-  }
-);
+// const predictionsListener = predictions.onSnapshot(
+//   (docsSnapshot) => {
+//     const docs = docsSnapshot.docs.map((doc) => doc.data());
+//     predictionsData = docs;
+//   },
+//   (err) => {
+//     console.log(`Encountered error: ${err}`);
+//   }
+// );
 
 const promotionsListener = promotions.onSnapshot(
   (docsSnapshot) => {
@@ -69,11 +70,29 @@ const promotionsListener = promotions.onSnapshot(
   }
 );
 
+app.use(cors());
+
 app.get("/", (req, res) => {
   res.send("<h1>Partner3</h1>");
 });
 
-app.use(cors());
+app.get("/api/v1/:code", (req, res) => {
+  axios("https://id.twitch.tv/oauth2/token", {
+    method: "POST",
+    headers: {
+      ContentType: "application/x-www-form-urlencoded",
+    },
+    data: {
+      client_id: process.env.TWITCH_CLIENT_ID,
+      client_secret: process.env.TWITCH_CLIENT_SECRET,
+      code: req.params.code,
+      grant_type: "authorization_code",
+      redirect_uri: process.env.TWITCH_REDIRECT_URI,
+    },
+  })
+    .then((tokens) => res.json(tokens.data))
+    .catch((error) => res.status(400).end());
+});
 
 const server = http.createServer(app);
 
@@ -109,13 +128,13 @@ io.on("connection", (socket) => {
   socket.emit("receive_bot", botData);
   socket.emit("receive_users", usersData);
   socket.emit("receive_donations", donationsData);
-  socket.emit("receive_predictions", predictionsData);
+  // socket.emit("receive_predictions", predictionsData);
   socket.emit("receive_promotions", promotionsData);
 
-  // setInterval(() => {
-  //   socket.emit("receive_donations", donationsData);
-  //   socket.emit("receive_predictions", predictionsData);
-  // }, 5000);
+  setInterval(() => {
+    socket.emit("receive_donations", donationsData);
+    // socket.emit("receive_predictions", predictionsData);
+  }, 10000);
 
   socket.on("send_bot", (data) => {
     socket.emit("receive_bot", botData);
@@ -129,9 +148,9 @@ io.on("connection", (socket) => {
     socket.emit("receive_donations", donationsData);
   });
 
-  socket.on("send_predictions", (data) => {
-    socket.emit("receive_predictions", predictionsData);
-  });
+  // socket.on("send_predictions", (data) => {
+  //   socket.emit("receive_predictions", predictionsData);
+  // });
 
   socket.on("send_promotions", (data) => {
     socket.emit("receive_promotions", promotionsData);
